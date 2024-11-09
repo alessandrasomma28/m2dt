@@ -1,15 +1,6 @@
 import xml.etree.ElementTree as ET
 import pandas as pd
-import random
-import string
-from xml.dom import minidom
-from datetime import datetime
-import numpy as np
-import time
-import inspect
-import ast
-import types
-import uuid
+import os
 
 
 class UMLClass:
@@ -147,20 +138,48 @@ def XMLUMLParser(xmlFilePath):
     """
     tree = ET.parse(xmlFilePath)
     rootElement = tree.getroot()
-
     # Step 1: Parse UML classes
     umlClasses, dfClasses = parseClasses(rootElement)
-
     # Step 2: Find UML relationships (associations, aggregations, compositions)
     umlRelationships = findAssociations(rootElement, umlClasses)
-
     # Step 3: Find generalization relationships
     umlRelationships = findGeneralizations(rootElement, umlClasses, umlRelationships)
-
     # Step 4: Convert relationships to DataFrame
     dfRelationships = pd.DataFrame(umlRelationships)
-
     # Step 5: Filter out unknown classes
     dfRelationships = filterUnknownClasses(dfRelationships)
-
     return dfClasses, dfRelationships
+
+
+
+import os
+
+def saveToCsv(dfClasses, dfRelationships, classesFilePath, relationshipsFilePath):
+    """
+    Save the classes and relationships DataFrames to specified CSV files.
+    Checks if the directories exist; if not, it creates them.
+    If files with the same name already exist, they are overwritten.
+
+    Args:
+        dfClasses: DataFrame containing classes.
+        dfRelationships: DataFrame containing relationships.
+        classesFilePath: File path for saving the classes CSV file.
+        relationshipsFilePath: File path for saving the relationships CSV file.
+    """
+    # Ensure the directory for classesFilePath exists
+    classesDir = os.path.dirname(classesFilePath)
+    if classesDir and not os.path.exists(classesDir):
+        os.makedirs(classesDir)
+        print(f"Created directory: {classesDir}")
+
+    # Ensure the directory for relationshipsFilePath exists
+    relationshipsDir = os.path.dirname(relationshipsFilePath)
+    if relationshipsDir and not os.path.exists(relationshipsDir):
+        os.makedirs(relationshipsDir)
+        print(f"Created directory: {relationshipsDir}")
+
+    # Save DataFrames to CSV, overwriting any existing files
+    dfClasses.to_csv(classesFilePath, index=False)
+    dfRelationships.to_csv(relationshipsFilePath, index=False)
+    print(f"Classes saved to {classesFilePath}")
+    print(f"Relationships saved to {relationshipsFilePath}")
