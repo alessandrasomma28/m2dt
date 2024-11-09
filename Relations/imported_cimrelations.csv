@@ -1,0 +1,13 @@
+Relationship Type,From Class ID,From Class Name,To Class ID,To Class Name
+Aggregation,Z5CICMmGAqAC8Qvs,Road,4XyICMmGAqAC8QwD,RoadSegment
+Aggregation,ZvMICMmGAqAC8Qu7,Bologna,Z5CICMmGAqAC8Qvs,Road
+Aggregation,4XyICMmGAqAC8QwD,RoadSegment,S42ICMmGAqAC8Qwr,TrafficLoop
+Aggregation,4XyICMmGAqAC8QwD,RoadSegment,Mm.ICMmGAqAC8QxH,TrafficLight
+Generalization,CMUICMmGAqAC8Quk,RealCity,ZvMICMmGAqAC8Qu7,Bologna
+Generalization,7HRICMmGAqAC8QxY,PhysicalEntity,Z5CICMmGAqAC8Qvs,Road
+Generalization,7HRICMmGAqAC8QxY,PhysicalEntity,4XyICMmGAqAC8QwD,RoadSegment
+Generalization,jH6ICMmGAqAC8QwU,TemporalEntity,S42ICMmGAqAC8Qwr,TrafficLoop
+Generalization,jH6ICMmGAqAC8QwU,TemporalEntity,Z5CICMmGAqAC8Qvs,Road
+Generalization,wuuICMmGAqAC8Qw2,Sensor,S42ICMmGAqAC8Qwr,TrafficLoop
+Generalization,7HRICMmGAqAC8QxY,PhysicalEntity,S42ICMmGAqAC8Qwr,TrafficLoop
+Generalization,cnpICMmGAqAC8Qxx,Actuator,Mm.ICMmGAqAC8QxH,TrafficLight

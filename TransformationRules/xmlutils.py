@@ -2,7 +2,6 @@ import xml.etree.ElementTree as ET
 import pandas as pd
 import os
 
-
 class UMLClass:
     """Class to store UML Class details."""
     def __init__(self, class_id, name):
@@ -150,10 +149,7 @@ def XMLUMLParser(xmlFilePath):
     dfRelationships = filterUnknownClasses(dfRelationships)
     return dfClasses, dfRelationships
 
-
-
-import os
-
+### SAVE CLASSES AND RELATIONS TO CSV ###
 def saveToCsv(dfClasses, dfRelationships, classesFilePath, relationshipsFilePath):
     """
     Save the classes and relationships DataFrames to specified CSV files.
@@ -183,3 +179,5 @@ def saveToCsv(dfClasses, dfRelationships, classesFilePath, relationshipsFilePath
     dfRelationships.to_csv(relationshipsFilePath, index=False)
     print(f"Classes saved to {classesFilePath}")
     print(f"Relationships saved to {relationshipsFilePath}")
+
+
