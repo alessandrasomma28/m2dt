@@ -20,13 +20,13 @@ class UMLClass:
         self.generalizations = []
         self.specializations = []
 
-##### XML PARSING #######
+##### VP_GENERATED_XML PARSING #######
 def parseClasses(rootElement):
     """
-    Parse the XML to extract classes and return a dictionary of class IDs and names.
+    Parse the VP_GENERATED_XML to extract classes and return a dictionary of class IDs and names.
 
     Args:
-        rootElement: XML root element.
+        rootElement: VP_GENERATED_XML root element.
 
     Returns:
         classes: A dictionary of UMLClass objects.
@@ -51,10 +51,10 @@ def parseClasses(rootElement):
     return classes, dfClasses
 def findAssociations(rootElement, classDict):
     """
-    Extract association, aggregation, and composition relationships from the XML.
+    Extract association, aggregation, and composition relationships from the VP_GENERATED_XML.
 
     Args:
-        rootElement: XML root element.
+        rootElement: VP_GENERATED_XML root element.
         classDict: Dictionary of UMLClass objects.
 
     Returns:
@@ -93,10 +93,10 @@ def findAssociations(rootElement, classDict):
     return relationships
 def findGeneralizations(rootElement, classDict, relationshipList):
     """
-    Extract generalization relationships from the XML.
+    Extract generalization relationships from the VP_GENERATED_XML.
 
     Args:
-        rootElement: XML root element.
+        rootElement: VP_GENERATED_XML root element.
         classDict: Dictionary of UMLClass objects.
         relationshipList: List of existing relationships (to append to).
 
@@ -135,11 +135,11 @@ def filterUnknownClasses(dataFrame):
     return dataFrame
 def XMLUMLParser(xmlFilePath):
     """
-    Parse an XML file to extract UML classes and relationships,
+    Parse an VP_GENERATED_XML file to extract UML classes and relationships,
     returning the class and relationship data as DataFrames.
 
     Args:
-        xmlFilePath: Path to the XML file.
+        xmlFilePath: Path to the VP_GENERATED_XML file.
 
     Returns:
         dfClasses: DataFrame containing UML classes.
