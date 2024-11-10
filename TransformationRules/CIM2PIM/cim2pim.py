@@ -1,7 +1,7 @@
 from TransformationRules.transformationutils import generateId, getIdLength, getExistingIds, \
     findGeneralizationChildClasses, findClassId, findRelatedRelationships
 import pandas as pd
-from TransformationRules.constants import CIM_REAL_TWIN_CLASS_NAME, PHYSICAL_ENTITY_CLASS_NAME, TEMPORAL_ENTITY_CLASS_NAME, SENSOR_ENTITY_CLASS_NAME
+from TransformationRules.constants import CIM_REAL_TWIN_CLASS_NAME, PHYSICAL_ENTITY_CLASS_NAME, TEMPORAL_ENTITY_CLASS_NAME, SENSOR_ENTITY_CLASS_NAME, ACTUATOR_ENTITY_CLASS_NAME
 
 
 def cim2pimTransformation(cimClasses, cimRelations):
@@ -24,6 +24,15 @@ def cim2pimTransformation(cimClasses, cimRelations):
 
     # RULE 5. transformSensor
     pimClasses, pimRelations = transformSensor(cimClasses, cimRelations, pimClasses, pimRelations)
+
+    # RULE 6. transformActuator
+    pimClasses, pimRelations = transformActuator(cimClasses, cimRelations, pimClasses, pimRelations)
+
+    # RULE 7. integrateServiceFeedback
+    pimClasses, pimRelations = integrateServiceFeedback(cimClasses, cimRelations, pimClasses, pimRelations)
+
+    # RULE 8. integrateDataManager
+    pimClasses, pimRelations = integrateDataManager(pimClasses, pimRelations)
 
     return pimClasses, pimRelations
 
@@ -710,7 +719,7 @@ def mergeShadowModelFlow(cimClasses, cimRelations, pimClasses, pimRelations):
     pimRelations = pimRelations.drop_duplicates(subset=['From Class Name', 'To Class Name', 'Relationship Type'], keep='first', ignore_index=True)
     return pimClasses, pimRelations
 
-############################### RULE4: transformSensor ##############################
+############################### RULE5: transformSensor ##############################
 def searchSensorEntityClass(cimClasses: pd.DataFrame) -> str:
     """
     Search for the class ID of a sensor entity in the CIM classes by its name.
@@ -920,4 +929,566 @@ def transformSensor(cimClasses, cimRelations, pimClasses, pimRelations):
 
     return pimClasses, pimRelations
 
-############################### RULE5: transformActuator ##############################
+############################### RULE6: transformActuator ##############################
+def searchActuatorEntityClass(cimClasses: pd.DataFrame) -> str:
+    """
+    Search for the class ID of an actuator entity in the CIM classes by its name.
+
+    Args:
+        cimClasses (pd.DataFrame): DataFrame of CIM classes.
+
+    Returns:
+        str: The class ID of the actuator entity class, or None if not found.
+    """
+    return findClassId(cimClasses, ACTUATOR_ENTITY_CLASS_NAME)
+def searchActuatorEntities(cimClasses: pd.DataFrame, actuatorEntityId: str, cimRelations: pd.DataFrame) -> pd.DataFrame:
+    """
+    Search for all child classes of the actuator entity type.
+
+    Args:
+        cimClasses (pd.DataFrame): DataFrame of CIM classes.
+        actuatorEntityId (str): The ID of the actuator entity class.
+        cimRelations (pd.DataFrame): DataFrame of CIM relationships.
+
+    Returns:
+        pd.DataFrame: DataFrame of child classes of the actuator entity class.
+    """
+    return findGeneralizationChildClasses(cimRelations, actuatorEntityId)
+def addD2PAdapters(dataReceivers: list, existingIds: set, idLength: int, pimClasses: pd.DataFrame) -> tuple:
+    """
+    Add D2PAdapter classes for each actuator/data receiver to the PIM model.
+    If there's only one data receiver, use a generic name 'D2PAdapter'.
+    If there are multiple receivers, the adapter name will be the receiver's name
+    with 'DataReceiver' removed.
+
+    Args:
+        dataReceivers (list): List of data receiver classes to which D2PAdapters will be added.
+        existingIds (set): Set of existing class IDs to ensure uniqueness.
+        idLength (int): Length of generated class IDs.
+        pimClasses (pd.DataFrame): DataFrame of PIM classes to which the new adapters will be added.
+
+    Returns:
+        tuple: (list of new D2PAdapter classes, updated PIM classes DataFrame with D2PAdapters).
+    """
+    newClasses = []
+
+    # If there's only one receiver, use the generic name 'D2PAdapter'
+    if len(dataReceivers) == 1:
+        newAdapterId = generateId(existingIds, idLength)
+        existingIds.add(newAdapterId)
+        newClasses.append({
+            'Class ID': newAdapterId,
+            'Class Name': 'D2PAdapter'
+        })
+    else:
+        # If there are multiple receivers, create unique adapter names
+        for receiver in dataReceivers:
+            newAdapterId = generateId(existingIds, idLength)
+            existingIds.add(newAdapterId)
+            # Remove 'DataReceiver' from the receiver name
+            className = receiver['Class Name'].replace('DataReceiver', '')
+            newClasses.append({
+                'Class ID': newAdapterId,
+                'Class Name': 'D2PAdapter' + className
+            })
+
+    # Append new adapter classes to PIM classes DataFrame
+    pimClasses = pd.concat([pimClasses, pd.DataFrame(newClasses)], ignore_index=True)
+
+    return newClasses, pimClasses
+def createDataReceivers(cimClasses: pd.DataFrame, cimRelations: pd.DataFrame, existingIds: set, idLength: int) -> list:
+    """
+    Create digital data receivers for each actuator entity found in the CIM classes.
+
+    Args:
+        cimClasses (pd.DataFrame): DataFrame of CIM classes.
+        cimRelations (pd.DataFrame): DataFrame of CIM relationships.
+        existingIds (set): Set of existing class IDs to ensure uniqueness.
+        idLength (int): Length of generated class IDs.
+
+    Returns:
+        list: List of newly created data receiver classes (for actuators).
+    """
+    # Search for the actuator entity class in CIM classes
+    actuatorId = searchActuatorEntityClass(cimClasses)
+    if not actuatorId:
+        print(f"Warning: No Actuator entity class found with name '{ACTUATOR_ENTITY_CLASS_NAME}'.")
+        return []
+
+    # Search for all child entities of the actuator class
+    actuatorEntities = searchActuatorEntities(cimClasses, actuatorId, cimRelations)
+    dataReceivers = []
+
+    # Create data receivers for each actuator entity
+    for _, row in actuatorEntities.iterrows():
+        cimClassName = row['To Class Name']
+        newId = generateId(existingIds, idLength)
+        newClassName = cimClassName + 'DataReceiver'
+        dataReceivers.append({
+            'Class ID': newId,
+            'Class Name': newClassName
+        })
+        existingIds.add(newId)
+
+    return dataReceivers
+def addUseReceivers(receiversList: list, adaptersList: list, pimRelations: pd.DataFrame) -> pd.DataFrame:
+    """
+    Add 'Usage' relationships between the data receivers and the adapters in the PIM model.
+
+    Args:
+        receiversList (list): List of receiver classes (DataReceivers).
+        adaptersList (list): List of adapter classes (D2PAdapters).
+        pimRelations (pd.DataFrame): DataFrame of PIM relationships.
+
+    Returns:
+        pd.DataFrame: Updated PIM relationships with the new 'Usage' relationships added.
+    """
+    newUseRelations = []
+
+    # Case for a single receiver and a single adapter
+    if len(receiversList) == 1 and len(adaptersList) == 1:
+        newUseRelations.append({
+            'Relationship Type': 'Usage',
+            'From Class ID': adaptersList[0]['Class ID'],  # Use the first item from the adapters list
+            'From Class Name': adaptersList[0]['Class Name'],
+            'To Class ID': receiversList[0]['Class ID'],  # Use the first item from the receivers list
+            'To Class Name': receiversList[0]['Class Name'],
+            'Aggregation': None
+        })
+    else:
+        # Multiple receivers case
+        for receiver in receiversList:
+            receiverName = receiver['Class Name'].replace('DataReceiver', '')
+            # Find the corresponding adapter class based on receiver name
+            adapter = next(
+                (adapter for adapter in adaptersList if adapter['Class Name'] == 'D2PAdapter' + receiverName), None)
+
+            if adapter:
+                newUseRelations.append({
+                    'Relationship Type': 'Usage',
+                    'From Class ID': adapter['Class ID'],
+                    'From Class Name': adapter['Class Name'],
+                    'To Class ID': receiver['Class ID'],
+                    'To Class Name': receiver['Class Name'],
+                    'Aggregation': None
+                })
+
+    # Append new usage relations to PIM relations DataFrame
+    newUseRelationsDf = pd.DataFrame(newUseRelations)
+    pimRelations = pd.concat([pimRelations, newUseRelationsDf], ignore_index=True)
+
+    return pimRelations
+
+def transformActuator(cimClasses: pd.DataFrame, cimRelations: pd.DataFrame, pimClasses: pd.DataFrame, pimRelations: pd.DataFrame) -> tuple:
+    """
+    Transform actuators from the CIM model to data receivers in the PIM model with D2PAdapters.
+
+    This transformation includes:
+      - Creating D2PAdapter classes
+      - Adding the 'Adapter' superclass if it doesn't already exist
+      - Adding usage and generalization relationships between data receivers and adapters
+
+    Args:
+        cimClasses (pd.DataFrame): DataFrame containing CIM classes.
+        cimRelations (pd.DataFrame): DataFrame containing CIM relationships.
+        pimClasses (pd.DataFrame): DataFrame of existing PIM classes.
+        pimRelations (pd.DataFrame): DataFrame of existing PIM relationships.
+
+    Returns:
+        tuple: Updated (pimClasses, pimRelations) DataFrames with new classes and relationships.
+    """
+    # Retrieve existing IDs and determine ID length for new classes
+    existingIds = getExistingIds(pimClasses)
+    idLength = getIdLength(pimClasses)
+
+    # Step 1: Create data receivers for actuator entities
+    dataReceivers = createDataReceivers(cimClasses, cimRelations, existingIds, idLength)
+    pimClasses = pd.concat([pimClasses, pd.DataFrame(dataReceivers)], ignore_index=True)
+
+    # Step 2: Add D2PAdapter classes for each data receiver
+    adaptersList, pimClasses = addD2PAdapters(dataReceivers, existingIds, idLength, pimClasses)
+
+    # Step 3: Check if 'Adapter' superclass already exists; if not, create it
+    if not pimClasses[pimClasses['Class Name'] == 'Adapter'].empty:
+        adapterId = pimClasses[pimClasses['Class Name'] == 'Adapter']['Class ID'].values[0]
+    else:
+        # Create 'Adapter' superclass if it doesn't exist
+        adapterId = addAdapter(existingIds, idLength)
+        pimClasses = pd.concat([pimClasses, pd.DataFrame([{'Class ID': adapterId, 'Class Name': 'Adapter'}])],ignore_index=True)
+
+    # Step 4: Add generalization relationships between adapters and 'Adapter'
+    pimRelations = addGeneralizationAdapters(adaptersList, adapterId, pimRelations)
+
+    # Step 5: Add usage relationships between data receivers and adapters
+    pimRelations = addUseReceivers(dataReceivers, adaptersList, pimRelations)
+
+    # Step 6: Remove duplicates from PIM classes and relationships
+    pimClasses = pimClasses.drop_duplicates(subset='Class Name', keep='first', ignore_index=True)
+    pimRelations = pimRelations.drop_duplicates(subset=['From Class Name', 'To Class Name', 'Relationship Type'], keep='first', ignore_index=True)
+
+    return pimClasses, pimRelations
+
+
+############################### RULE7: integrateServiceFeedback ##############################
+def addServiceManager(existingIds: set, idLength: int) -> str:
+    """
+    Add a ServiceManager class to the PIM model.
+
+    The ServiceManager class is responsible for managing service-related feedback and interactions
+    within the Digital Twin architecture.
+
+    Args:
+        existingIds (set): Set of existing class IDs to ensure uniqueness.
+        idLength (int): Length of generated class IDs.
+
+    Returns:
+        str: The class ID of the newly created ServiceManager class.
+    """
+    serviceId = generateId(existingIds, idLength)
+    existingIds.add(serviceId)
+    return serviceId
+def addFeedback(existingIds: set, idLength: int) -> str:
+    """
+    Add a Feedback class to the PIM model.
+
+    Feedback represents a mechanism that collects feedback from data receivers to monitor and adjust
+    the behavior of the physical system in the Digital Twin architecture.
+
+    Args:
+        existingIds (set): Set of existing class IDs to ensure uniqueness.
+        idLength (int): Length of generated class IDs.
+
+    Returns:
+        str: The class ID of the newly created Feedback class.
+    """
+    feedbackId = generateId(existingIds, idLength)
+    existingIds.add(feedbackId)
+    return feedbackId
+def createFeedbackProviders(pimClasses: pd.DataFrame, existingIds: set, idLength: int) -> tuple:
+    """
+    Create Feedback classes for each DataReceiver class in the PIM model.
+
+    Feedback providers are added for all classes identified as data receivers in the system,
+    acting as feedback channels for system data.
+
+    Args:
+        pimClasses (pd.DataFrame): DataFrame of PIM classes.
+        existingIds (set): Set of existing class IDs to ensure uniqueness.
+        idLength (int): Length of generated class IDs.
+
+    Returns:
+        tuple: A list of new Feedback providers and the updated PIM classes DataFrame.
+    """
+    dataReceivers = pimClasses[pimClasses['Class Name'].str.contains('DataReceiver')]
+    newFeedbackProviders = []
+
+    for _, receiver in dataReceivers.iterrows():
+        feedbackId = addFeedback(existingIds, idLength)
+        newFeedbackProviders.append({
+            'Class ID': feedbackId,
+            'Class Name': 'Feedback' + receiver['Class Name'].replace('DataReceiver', '')
+        })
+
+    pimClasses = pd.concat([pimClasses, pd.DataFrame(newFeedbackProviders)], ignore_index=True)
+    return newFeedbackProviders, pimClasses
+def addAggregationFeedback(feedbackList: list, serviceId: str, pimRelations: pd.DataFrame) -> pd.DataFrame:
+    """
+    Add aggregation relationships between Feedback classes and the ServiceManager class.
+
+    Establishes a composite aggregation relationship between the ServiceManager class and each
+    Feedback provider class.
+
+    Args:
+        feedbackList (list): List of Feedback classes.
+        serviceId (str): The class ID of the ServiceManager.
+        pimRelations (pd.DataFrame): DataFrame of PIM relationships.
+
+    Returns:
+        pd.DataFrame: Updated PIM relationships with the new aggregation relations added.
+    """
+    newRelations = []
+    processedRelations = set()
+
+    for feedback in feedbackList:
+        relationTuple = (feedback['Class ID'], serviceId, 'Aggregation')
+        if relationTuple not in processedRelations:
+            newRelations.append({
+                'Relationship Type': 'Aggregation',
+                'From Class ID': serviceId,
+                'From Class Name': 'ServiceManager',
+                'To Class ID': feedback['Class ID'],
+                'To Class Name': feedback['Class Name'],
+                'Aggregation': 'Composite'
+            })
+            processedRelations.add(relationTuple)
+
+    newRelationsDf = pd.DataFrame(newRelations)
+    pimRelations = pd.concat([pimRelations, newRelationsDf], ignore_index=True)
+    return pimRelations
+def addUseService(serviceId: str, digitalTwinManagerId: str, pimRelations: pd.DataFrame) -> pd.DataFrame:
+    """
+    Add a 'Usage' relationship between the ServiceManager and DigitalTwinManager classes.
+
+    Creates a usage relationship where the ServiceManager class uses the DigitalTwinManager
+    within the Digital Twin architecture.
+
+    Args:
+        serviceId (str): The class ID of the ServiceManager.
+        digitalTwinManagerId (str): The class ID of the DigitalTwinManager.
+        pimRelations (pd.DataFrame): DataFrame of PIM relationships.
+
+    Returns:
+        pd.DataFrame: Updated PIM relationships with the new 'Usage' relationship added.
+    """
+    newUseRelations = [{
+        'Relationship Type': 'Usage',
+        'From Class ID': serviceId,
+        'From Class Name': 'ServiceManager',
+        'To Class ID': digitalTwinManagerId,
+        'To Class Name': 'DigitalTwinManager',
+        'Aggregation': None
+    }]
+
+    newUseRelationsDf = pd.DataFrame(newUseRelations)
+    pimRelations = pd.concat([pimRelations, newUseRelationsDf], ignore_index=True)
+    return pimRelations
+def addUseFeedbackProviders(feedbackList: list, pimClasses: pd.DataFrame, pimRelations: pd.DataFrame) -> pd.DataFrame:
+    """
+    Add 'Usage' relationships between Feedback classes and their corresponding DataReceiver classes.
+
+    Links each Feedback provider to its corresponding DataReceiver by adding usage relationships
+    in the PIM model.
+
+    Args:
+        feedbackList (list): List of Feedback classes.
+        pimClasses (pd.DataFrame): DataFrame of PIM classes.
+        pimRelations (pd.DataFrame): DataFrame of PIM relationships.
+
+    Returns:
+        pd.DataFrame: Updated PIM relationships with the new 'Usage' relationships added.
+    """
+    newRelations = []
+    processedRelations = set()
+
+    for feedback in feedbackList:
+        feedbackName = feedback['Class Name'].replace('Feedback', '')
+        dataReceiver = pimClasses[pimClasses['Class Name'] == (feedbackName + 'DataReceiver')]
+
+        if not dataReceiver.empty:
+            dataReceiverId = dataReceiver['Class ID'].values[0]
+            dataReceiverName = dataReceiver['Class Name'].values[0]
+
+            relationTuple = (feedback['Class ID'], dataReceiverId, 'Usage')
+            if relationTuple not in processedRelations:
+                newRelations.append({
+                    'Relationship Type': 'Usage',
+                    'From Class ID': feedback['Class ID'],
+                    'From Class Name': feedback['Class Name'],
+                    'To Class ID': dataReceiverId,
+                    'To Class Name': dataReceiverName,
+                    'Aggregation': None
+                })
+                processedRelations.add(relationTuple)
+
+    newRelationsDf = pd.DataFrame(newRelations)
+    pimRelations = pd.concat([pimRelations, newRelationsDf], ignore_index=True)
+    return pimRelations
+def integrateServiceFeedback(cimClasses: pd.DataFrame, cimRelations: pd.DataFrame, pimClasses: pd.DataFrame, pimRelations: pd.DataFrame) -> tuple:
+    """
+    Integrates the ServiceManager and feedback flow into the PIM model, establishing relationships
+    with the DigitalTwinManager and feedback providers.
+
+    This function performs the following operations:
+      1. Creates a ServiceManager class responsible for managing services within the Digital Twin architecture.
+      2. Adds a usage relationship between the ServiceManager and the DigitalTwinManager,
+         allowing the ServiceManager to utilize digital twin models.
+      3. For each data receiver in the system, creates a corresponding Feedback Provider class.
+         These feedback providers serve as channels to monitor and adjust the physical system.
+      4. Establishes a composite aggregation relationship between the ServiceManager and
+         the Feedback Providers.
+      5. Links each Feedback Provider to its corresponding data receiver via a usage relationship.
+
+    Args:
+        cimClasses (pd.DataFrame): DataFrame of CIM classes.
+        cimRelations (pd.DataFrame): DataFrame of CIM relationships.
+        pimClasses (pd.DataFrame): DataFrame of PIM classes.
+        pimRelations (pd.DataFrame): DataFrame of PIM relationships.
+
+    Returns:
+        tuple: Updated (pimClasses, pimRelations) DataFrames with ServiceManager and feedback flow integrated.
+    """
+    # Step 1: Retrieve existing class IDs and determine the ID length for unique identification
+    existingIds = getExistingIds(pimClasses)
+    idLength = getIdLength(pimClasses)
+    # Step 2: Add the ServiceManager class to the PIM model
+    serviceId = addServiceManager(existingIds, idLength)
+    pimClasses = pd.concat([pimClasses, pd.DataFrame([{'Class ID': serviceId, 'Class Name': 'ServiceManager'}])], ignore_index=True)
+    # Step 3: Create Feedback Providers for each data receiver and add them to the PIM model
+    feedbackList, pimClasses = createFeedbackProviders(pimClasses, existingIds, idLength)
+    # Step 4: Establish aggregation relationships between the ServiceManager and Feedback Providers
+    pimRelations = addAggregationFeedback(feedbackList, serviceId, pimRelations)
+    # Step 5: Retrieve the DigitalTwinManager ID
+    digitalTwinManagerId = pimClasses[pimClasses['Class Name'] == 'DigitalTwinManager']['Class ID'].values[0]
+    # Step 6: Establish a usage relationship between the ServiceManager and the DigitalTwinManager
+    pimRelations = addUseService(serviceId, digitalTwinManagerId, pimRelations)
+    # Step 7: Establish usage relationships between Feedback Providers and their corresponding Data Receivers
+    pimRelations = addUseFeedbackProviders(feedbackList, pimClasses, pimRelations)
+    # Step 8: Remove duplicates from PIM classes and relationships to ensure data integrity
+    pimClasses = pimClasses.drop_duplicates(subset='Class Name', keep='first', ignore_index=True)
+    pimRelations = pimRelations.drop_duplicates(subset=['From Class Name', 'To Class Name', 'Relationship Type'], keep='first', ignore_index=True)
+
+    return pimClasses, pimRelations
+
+
+############################### RULE8: integrateDataManager ##############################
+def addDataManager(existingIds: set, idLength: int) -> str:
+    """
+    Add a DataManager class to the PIM model.
+
+    The DataManager class is responsible for managing data flow, ensuring proper communication
+    between data models and other components of the Digital Twin system.
+
+    Args:
+        existingIds (set): Set of existing class IDs to ensure uniqueness.
+        idLength (int): Length of generated class IDs.
+
+    Returns:
+        str: The class ID of the newly created DataManager class.
+    """
+    dataManagerId = generateId(existingIds, idLength)
+    existingIds.add(dataManagerId)
+    return dataManagerId
+def addDataModel(existingIds: set, idLength: int) -> str:
+    """
+    Add a DataModel class to the PIM model.
+
+    The DataModel class represents the digital models in the Digital Twin architecture that capture
+    data about the physical system's behavior and structure.
+
+    Args:
+        existingIds (set): Set of existing class IDs to ensure uniqueness.
+        idLength (int): Length of generated class IDs.
+
+    Returns:
+        str: The class ID of the newly created DataModel class.
+    """
+    dataModelId = generateId(existingIds, idLength)
+    existingIds.add(dataModelId)
+    return dataModelId
+def addUseDataModel(dataModelId: str, dataManagerId: str,pimRelations: pd.DataFrame) -> pd.DataFrame:
+    """
+    Adds 'Usage' relationships between the DataManager and DataModel
+
+    Args:
+        dataModelId (str): The ID of the DataModel class.
+        dataManagerId (str): The ID of the DataManager class.
+
+    Returns:
+        pd.DataFrame: Updated PIM relationships with new 'Usage' relationships added.
+    """
+    newRelations = [
+        {
+            'Relationship Type': 'Usage',
+            'From Class ID': dataManagerId,
+            'From Class Name': 'DataManager',
+            'To Class ID': dataModelId,
+            'To Class Name': 'DataModel',
+            'Aggregation': None
+        }
+    ]
+    newRelationsDf = pd.DataFrame(newRelations)
+    pimRelations = pd.concat([pimRelations, newRelationsDf], ignore_index=True)
+
+    return pimRelations
+def addUseDataManager(dataManagerId: str, digitalTwinManagerId: str, serviceManagerId: str,adapterId: str, pimRelations: pd.DataFrame) -> pd.DataFrame:
+    """
+    Add 'Usage' relationships between the DataManager and other components in the PIM model.
+
+    This function creates 'Usage' relationships that connect the DataManager to:
+      - The ServiceManager (which uses the DataManager to manage services)
+      - The DigitalTwinManager (which uses the DataManager to interface with digital models)
+      - The Adapter (which uses the DataManager to communicate with physical systems)
+
+    Args:
+        dataManagerId (str): The ID of the DataManager class.
+        digitalTwinManagerId (str): The ID of the DigitalTwinManager class.
+        serviceManagerId (str): The ID of the ServiceManager class.
+        adapterId (str): The ID of the Adapter class.
+        pimRelations (pd.DataFrame): DataFrame of existing PIM relationships.
+
+    Returns:
+        pd.DataFrame: Updated PIM relationships DataFrame with the newly added 'Usage' relationships.
+    """
+
+    newUseRelations = [
+        {
+            'Relationship Type': 'Usage',
+            'From Class ID': serviceManagerId,
+            'From Class Name': 'ServiceManager',
+            'To Class ID': dataManagerId,
+            'To Class Name': 'DataManager',
+            'Aggregation': None
+        },
+        {
+            'Relationship Type': 'Usage',
+            'From Class ID': digitalTwinManagerId,
+            'From Class Name': 'DigitalTwinManager',
+            'To Class ID': dataManagerId,
+            'To Class Name': 'DataManager',
+            'Aggregation': None
+        },
+        {
+            'Relationship Type': 'Usage',
+            'From Class ID': adapterId,
+            'From Class Name': 'Adapter',
+            'To Class ID': dataManagerId,
+            'To Class Name': 'DataManager',
+            'Aggregation': None
+        }
+    ]
+
+    newUseRelationsDf = pd.DataFrame(newUseRelations)
+    pimRelations = pd.concat([pimRelations, newUseRelationsDf], ignore_index=True)
+
+    return pimRelations
+
+def integrateDataManager(pimClasses: pd.DataFrame, pimRelations: pd.DataFrame
+) -> tuple:
+    """
+    Integrate the DataManager and DataModel into the PIM model.
+
+    This function introduces both the DataManager and DataModel classes into the PIM. It establishes relationships between these two classes and relevant adapters, ensuring usage relationships.
+
+    Args:
+        pimClasses (pd.DataFrame): DataFrame containing the current PIM classes.
+        pimRelations (pd.DataFrame): DataFrame containing the current PIM relationships.
+
+    Returns:
+        tuple: Updated (pimClasses, pimRelations) DataFrames with added DataManager, DataModel, and related relationships.
+    """
+
+    # Step 1: Get existing IDs and length of IDs
+    existingIds = getExistingIds(pimClasses)
+    idLength = getIdLength(pimClasses)
+
+    # Step 2: Add DataManager and DataModel classes
+    dataManagerId = addDataManager(existingIds, idLength)
+    pimClasses = pd.concat([pimClasses, pd.DataFrame([{'Class ID': dataManagerId, 'Class Name': 'DataManager'}])], ignore_index=True)
+
+    dataModelId = addDataModel(existingIds, idLength)
+    pimClasses = pd.concat([pimClasses, pd.DataFrame([{'Class ID': dataModelId, 'Class Name': 'DataModel'}])], ignore_index=True)
+
+    # Step 3: Add 'CompliantWith' relationships between DataManager, DataModel, and adapters
+    pimRelations = addUseDataModel(dataModelId, dataManagerId, pimRelations)
+
+    # Retrieve IDs for related components
+    digitalTwinManagerId = pimClasses[pimClasses['Class Name'] == 'DigitalTwinManager']['Class ID'].values[0]
+    serviceManagerId = pimClasses[pimClasses['Class Name'] == 'ServiceManager']['Class ID'].values[0]
+    adapterId = pimClasses[pimClasses['Class Name'] == 'Adapter']['Class ID'].values[0]
+    # Step 5: Add 'Usage' relationships between DataManager and key classes
+    pimRelations = addUseDataManager(dataManagerId, digitalTwinManagerId, serviceManagerId, adapterId, pimRelations)
+    # Step 6: Remove duplicates from the PIM classes and relationships
+    pimClasses = pimClasses.drop_duplicates(subset='Class Name', keep='first', ignore_index=True)
+    pimRelations = pimRelations.drop_duplicates(subset=['From Class Name', 'To Class Name', 'Relationship Type'],keep='first', ignore_index=True)
+
+    return pimClasses, pimRelations

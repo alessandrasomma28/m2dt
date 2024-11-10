@@ -1,0 +1,22 @@
+Class ID,Class Name
+ZoIarRArWXajUK8R,BolognaPhysicalTwin
+zal2sYEfqXbnjKT7,DigitalRoad
+E4vRypSo3ZWcq6LI,DigitalRoadSegment
+LXLhmfEdWwfkZMeN,DigitalTrafficLoop
+X15HEH2BHsahxbcD,DigitalModel
+aeGWw1hCjo78Lwyz,DigitalModelManager
+iQqT9VxkmJCy2V3v,TrafficLoopShadow
+Wdh6Zgc2dIYdT4tV,RoadShadow
+nnBAXgqIWucr2WpI,DigitalShadow
+vGaXrsYgjx7ZS6BP,DigitalShadowManager
+NtLsHR78WiPsLlzx,DigitalTwinManager
+tnFOpYkOH93Ii72y,DigitalRepresentation
+dBApcH79rRPqJxYz,TrafficLoopDataProvider
+m0fmdDwF7jaT1ep7,P2DAdapter
+jYmxqk5BOsCJMu0B,Adapter
+lqis9jksyAWSra42,TrafficLightDataReceiver
+EiN9LS3NZygn62wF,D2PAdapter
+Fon93WJEgoRMwzSE,ServiceManager
+4gB5BBN3h4vusrfm,FeedbackTrafficLight
+Y0MLWFHzQTzU0fPa,DataManager
+CmLD3DvfSi6UZBqW,DataModel
