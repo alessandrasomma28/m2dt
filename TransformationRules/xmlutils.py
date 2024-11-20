@@ -267,7 +267,7 @@ def saveXml(project: ET.Element, outputXmlPath: str):
 
     Args:
         project (ET.Element): Root element of the XML tree to save.
-        outputXmlPath (str): Path where the XML file will be saved. Defaults to PIM_XML_FILE_PATH.
+        outputXmlPath (str): Path where the XML file will be saved. Defaults to PIM_M2MT_XML_FILE_PATH.
     """
     # Ensure the directory for the output file exists; create if it does not
     directory = os.path.dirname(outputXmlPath)

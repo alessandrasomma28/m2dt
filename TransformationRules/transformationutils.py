@@ -94,3 +94,16 @@ def findRelatedRelationships(relationsDf: pd.DataFrame, classId: str) -> pd.Data
         relatedRelationships = pd.DataFrame(relatedRelationships)
 
     return relatedRelationships
+
+def findClassesByPartialName(classesDf: pd.DataFrame, partialName: str) -> pd.DataFrame:
+    """
+    Find classes in a DataFrame whose names contain a specific substring.
+
+    Args:
+        classesDf (pd.DataFrame): DataFrame of classes with a 'Name' column.
+        partialName (str): Substring to search for in the class names.
+
+    Returns:
+        pd.DataFrame: DataFrame of matching classes.
+    """
+    return classesDf[classesDf['Class Name'].str.contains(partialName, case=False, na=False)]
