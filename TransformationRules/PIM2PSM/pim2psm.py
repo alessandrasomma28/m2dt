@@ -22,6 +22,7 @@ def pim2psmTransformation(pimClasses, pimRelations):
     return psmClasses, psmRelations
 
 
+############################### RULE1: transformDigitalModel  ##############################
 def transformDigitalModel(pimClasses, pimRelations):
     """
     Transform digital-related PIM classes into a SumoSimulator PSM class.
