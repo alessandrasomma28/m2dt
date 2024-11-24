@@ -48,7 +48,6 @@ models, transformation logic, and supporting utilities. Below is a detailed brea
 │   │   └── VP_GENERATED_XML  # (Optional) Stores the PSM exported in XML format from VP.
 │   ├── 04.ISM                # Directory for storing ISM code artifacts (Python modules) generated after Model-To-Text transformations.
 │   │                           Note: This step is executed externally to the MoDT-M2M-TT tool.
-│   ├── README.md             # Describes the purpose and content of the `MDAModelinLevels` folder.
 │
 ├── TransformationRules
 │   ├── constants.py          # Defines constants such as file paths and transformation configurations.
@@ -58,12 +57,10 @@ models, transformation logic, and supporting utilities. Below is a detailed brea
 │   │   └── cim2pim.py        # Implements the CIM2PIM transformation logic using the defined rules.
 │   ├── PIM2PSM               # Directory defining the 8 transformation rules and logic for PIM to PSM.
 │   │   └── pim2psm.py        # Implements the PIM2PSM transformation logic using the defined rules.
-│   ├── README.md             # Provides a detailed explanation of the transformation tools and rules contained in the folder.
 │
 ├── TransformationResults
 │   ├── Classes               # Stores CSV files that contain details of imported and generated classes at each transformation step.
 │   ├── Relations             # Stores CSV files that contain details of imported and generated relations at each transformation step.
-│   ├── README.md             # Explains the structure and purpose of the transformation results folder.
 │
 ├── requirements.txt          # Lists all Python dependencies required for executing the tool.
 ├── main.py                   # Main entry point to execute the MoDT-M2M-TT tool.
