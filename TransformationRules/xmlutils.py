@@ -129,7 +129,7 @@ def filterUnknownClasses(dataFrame):
     dataFrame = dataFrame[dataFrame['From Class Name'] != 'Unknown']
     dataFrame = dataFrame[dataFrame['To Class Name'] != 'Unknown']
     return dataFrame
-def XMLUMLParser(xmlFilePath):
+def SourceXMLParser(xmlFilePath):
     """
     Parse an VP_GENERATED_XML file to extract UML classes and relationships,
     returning the class and relationship data as DataFrames.
@@ -1746,7 +1746,8 @@ def addConnectorsForRelations(connectors, pimRelations, pimClasses):
         addSubElementsToConnector(connector_element, relation_type, from_x, from_y, to_x, to_y)
 
     return connectors
-def createTransformedXML(OutputXMLPath: str, projectAuthor: str, projectName: str, classDiagramName: str, inputClasses: pd.DataFrame, inputRelations: pd.DataFrame):
+def TargetXMLCreator(OutputXMLPath: str, projectAuthor: str, projectName: str, classDiagramName: str, inputClasses:
+pd.DataFrame, inputRelations: pd.DataFrame):
     project = ET.Element("Project", Author=projectAuthor,
                          CommentTableSortAscending="false",
                          CommentTableSortColumn="Date Time",
