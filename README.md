@@ -12,7 +12,7 @@ The MoDT-M2M-TT process, illustrated in Figure 1, comprises four distinct steps 
 step produces an output, indicated by notes in the diagram, serving as input for the subsequent step.
 
 <div align="center">
-  <img src="Images/m2mprocess.png" alt="M2M Tool Image" width="700"/>
+  <img src="Images/m2mprocesstool.png" alt="M2M Tool Image" width="700"/>
   <p><b>Figure 1:</b> MoDT-M2M-TT Transformation Process. </p>
 </div>
 
