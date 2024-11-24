@@ -31,3 +31,62 @@ Finally, in step *M2M.4*, the target elements and relationships are organized in
 using the **TargetXMLCreator** tool, also available in [*xmlutils.py*](https://raw.githubusercontent.com/alessandrasomma28/MoDT-M2M-TT/refs/heads/main/TransformationRules/xmlutils.py). 
 This XML output enables import into Visual Paradigm or other modeling tools for visualizing the resulting class diagrams.
 
+
+## MoDT-M2M-TT Repository structure
+
+## MoDT-M2M-TT Tool Execution
+The *MoDT-M2M-TT* tool is executed by running the `main.py` script. It can be run via the command line or any IDE 
+that supports Python execution. 
+
+### Prerequisites 
+Before running `main.py`, a Python Virtual Environment must be activated. The environment can be created using the 
+provided **requirements.txt** file. 
+
+Moreover, to properly execute the *MoDT-M2M-TT* tool, the starting domain model (the CIM) must be exported in XML 
+format and placed in the following directory:
+
+> *path/to/repository/MoDT-M2M-TT/MDAModelinLevels/01.CIM/VP_GENERATED_XML*
+
+If the directory path is modified, the constant **CIM_VP_XML_FILE_PATH**, located in [**constants.py**](https://raw.githubusercontent.com/alessandrasomma28/MoDT-M2M-TT/refs/heads/main/TransformationRules/constants.py), 
+must be updated accordingly. 
+
+For ensuring replicability, an existing UML class diagram representing the *Bologna Mobility Domain Model* is already 
+available in XML format.
+
+### Setup Instructions for Execution from Command Line
+1. Clone the repository to your local machine:
+     ```bash
+   git clone repository-url
+2. Navigate to the repository directory
+    ```bash
+   cd /path/to/repository
+3. Create and activate a virtual environment
+   1. If virtualenv is not installed in your local machine, install it by running:
+   ```bash
+   python3 -m pip install virtualenv
+   ```
+   2. Create a Python virtual environment:
+   ```bash
+   virtualenv venv
+   ```
+   3. Activate the virtual environment:
+   ```bash
+   source venv/bin/activate
+   ```
+4. Once the Python virtual environment has been created and activated, install the required Python packages using 
+   the **requirements.txt**:
+    ```bash
+   pip3 install -r requirements.txt
+   ```
+5. Run the `main.py` script:
+   ```bash
+   python3 main.py
+   ```
+
+### Setup Instructions for Execution from IDE
+1. Open the project in your preferred IDE (e.g., PyCharm, VSCode, etc.).
+2. Ensure the Python interpreter for the project is set to the virtual environment created in the setup process 
+   and that the required packages are installed.
+3. Run the `main.py` script within the IDE.
+
+
