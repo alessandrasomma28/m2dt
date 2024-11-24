@@ -1,0 +1,4 @@
+Relationship Type,From Class ID,From Class Name,To Class ID,To Class Name,Aggregation
+Aggregation,XiRrcLs4yw752kKG,SumoSimulator,sFjEptfWEnUOSUfx,DigitalTwinManager,Shared
+Association,Rm5PUkDBIfrjC15M,ContextBroker,ubNsICBxqiI83b8R,SubscriptionManager,False
+Usage,Rm5PUkDBIfrjC15M,ContextBroker,qxW1G90g9XmjlTwa,MongoManager,False
