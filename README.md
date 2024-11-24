@@ -18,17 +18,18 @@ step produces an output, indicated by notes in the diagram, serving as input for
 
 The process begins with step *M2M.1*, where the source model is converted into the eXtensible Markup Language (XML) format 
 using the [**Visual Paradigm**](https://www.visual-paradigm.com/) (VP) modeling tool. 
-In step *M2M.2*, the custom-built **SourceXMLParser** tool (located in [*xmlutils.py*](https://raw.githubusercontent.com/alessandrasomma28/MoDT-M2M-TT/refs/heads/main/TransformationRules/xmlutils.py))
+In step *M2M.2*, the custom-built **SourceXMLParser** tool (located in [**xmlutils.py**](TransformationRules/xmlutils.py))
 processes the XML source model. It extracts the elements and relationships of the imported UML Class Diagram for 
 subsequent transformation.
 
 Step *M2M.3* applies transformation rules to convert the extracted source elements and relationships into their  
 corresponding target elements and relationships. If the transformation being performed is **CIM-to-PIM**, 
-the **cim2pimtransformation** tool (located in [*cim2pim.py*](https://raw.githubusercontent.com/alessandrasomma28/MoDT-M2M-TT/refs/heads/main/TransformationRules/CIM2PIM/cim2pim.py)) is used. 
-For **PIM-to-PSM** transformations, the **pim2psmtransformation** tool (located in [*pim2psm.py*](https://raw.githubusercontent.com/alessandrasomma28/MoDT-M2M-TT/refs/heads/main/TransformationRules/PIM2PSM/pim2psm.py)) is utilized.
+the **cim2pimtransformation** tool (located in [**cim2pim.py**](TransformationRules/CIM2PIM/cim2pim.py)) is used. 
+For **PIM-to-PSM** transformations, the **pim2psmtransformation** tool (located in [**pim2psm.py**](TransformationRules/PIM2PSM/pim2psm.py)) 
+is utilized.
 
 Finally, in step *M2M.4*, the target elements and relationships are organized into the XML format 
-using the **TargetXMLCreator** tool, also available in [*xmlutils.py*](https://raw.githubusercontent.com/alessandrasomma28/MoDT-M2M-TT/refs/heads/main/TransformationRules/xmlutils.py). 
+using the **TargetXMLCreator** tool, also available in [**xmlutils.py**](TransformationRules/xmlutils.py)
 This XML output enables import into Visual Paradigm or other modeling tools for visualizing the resulting class diagrams.
 
 
@@ -80,7 +81,7 @@ format and placed in the following directory:
 
 > *path/to/repository/MoDT-M2M-TT/MDAModelinLevels/01.CIM/VP_GENERATED_XML*
 
-If the directory path is modified, the constant **CIM_VP_XML_FILE_PATH**, located in [**constants.py**](https://raw.githubusercontent.com/alessandrasomma28/MoDT-M2M-TT/refs/heads/main/TransformationRules/constants.py), 
+If the directory path is modified, the constant **CIM_VP_XML_FILE_PATH**, located in [**constants.py**](TransformationRules/constants.py), 
 must be updated accordingly. 
 
 For ensuring replicability, an existing UML class diagram representing the *Bologna Mobility Domain Model* is already 
@@ -121,5 +122,35 @@ available in XML format.
 2. Ensure the Python interpreter for the project is set to the virtual environment created in the setup process 
    and that the required packages are installed.
 3. Run the `main.py` script within the IDE.
+
+
+## Execution Results
+
+The execution of the `main.py` script will generate the following outputs:
+
+1. **Imported CIM Classes and Relations**  
+   The tool extracts the set of CIM classes and relations from the XML representing the CIM imported from Visual Paradigm. These are saved in:  
+   - [*imported_cimclasses.csv*](TransformationResults/Classes/imported_cimclasses.csv): Contains the imported CIM classes.  
+   - [*imported_cimrelations.csv*](TransformationResults/Relations/imported_cimrelations.csv): Contains the imported CIM relations.  
+
+2. **Generated PIM Classes and Relations**  
+   The tool applies **CIM2PIM transformations** to generate PIM classes and relations. These results are saved as:  
+   - [*pim.xml*](MDAModelinLevels/02.PIM/M2MT_GENERATED_XML/pim.xml): The generated PIM model in XML format.  
+   - [*generated_pimclasses.csv*](TransformationResults/Classes/generated_pimclasses.csv): Contains the generated PIM classes.  
+   - [*generated_pimrelations.csv*](TransformationResults/Relations/generated_pimrelations.csv): Contains the generated PIM relations.  
+
+   The resulting classes and relations can either be sent to the next transformation process or the XML can be imported into Visual Paradigm for visualizing the resulting class diagram.
+
+3. **Generated PSM Classes and Relations**  
+   The tool applies **PIM2PSM transformations** to generate PSM classes and relations. These results are saved as:  
+   - [*psm.xml*](MDAModelinLevels/03.PSM/M2MT_GENERATED_XML/psm.xml): The generated PSM model in XML format.  
+   - [*generated_psmclasses.csv*](TransformationResults/Classes/generated_psmclasses.csv): Contains the generated PSM classes.  
+   - [*generated_psmrelations.csv*](TransformationResults/Relations/generated_psmrelations.csv): Contains the generated PSM relations.  
+
+   The resulting classes and relations can be imported into Visual Paradigm or any modeling tool that supports Model-to-Text transformations using Python as the programming language.
+
+4. **Software Code Artifacts (ISM)**  
+   The final set of software code artifacts is stored in the [*04.ISM*](MDAModelinLevels/04.ISM) folder. These Python modules are automatically generated through Model-To-Text (M2T) transformations.  
+   > **Note**: The M2T transformation process is external to the MoDT-M2M-TT tool and is included for the sake of completeness.
 
 
