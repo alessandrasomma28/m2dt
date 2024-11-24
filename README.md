@@ -17,7 +17,7 @@ step produces an output, indicated by notes in the diagram, serving as input for
 </div>
 
 The process begins with step *M2M.1*, where the source model is converted into the eXtensible Markup Language (XML) format 
-using the [**Visual Paradigm (VP) **](https://www.visual-paradigm.com/) modeling tool. 
+using the [**Visual Paradigm**](https://www.visual-paradigm.com/) (VP) modeling tool. 
 In step *M2M.2*, the custom-built **SourceXMLParser** tool, located in [*xmlutils.py*](https://raw.githubusercontent.com/alessandrasomma28/MoDT-M2M-TT/refs/heads/main/TransformationRules/xmlutils.py), 
 processes the XML source model. It extracts the elements and relationships of the imported UML Class Diagram for 
 subsequent transformation.
