@@ -51,7 +51,7 @@ models, transformation logic, and supporting utilities. Below is a detailed brea
 │
 ├── TransformationRules
 │   ├── constants.py          # Defines constants such as file paths and transformation configurations.
-│   ├── xmlutils.py           # Implements the SourceXMLParser and TransformedXMLCreator tools for parsing and generating XML.
+│   ├── xmlutils.py           # Implements the SourceXMLParser and TargetXMLCreator tools for parsing and generating XML.
 │   ├── transformationutils.py # Contains utilities shared between CIM2PIM and PIM2PSM transformations.
 │   ├── CIM2PIM               # Directory defining the 8 transformation rules and logic for CIM to PIM.
 │   │   └── cim2pim.py        # Implements the CIM2PIM transformation logic using the defined rules.
