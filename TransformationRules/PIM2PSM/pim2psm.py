@@ -3,6 +3,7 @@ from TransformationRules.transformationutils import (findGeneralizationChildClas
                                                      findClassesByPartialName, getIdLength, getExistingIds)
 from TransformationRules.constants import PIM_DIGITAL_MODEL_RELATED_CLASS_NAME, PIM_DIGITAL_RELATED_CLASS_NAME, PIM_MODEL_MANAGER_CLASS_NAME
 
+
 def pim2psmTransformation(pimClasses, pimRelations):
     psmRelations = pd.DataFrame(
         columns=["Relationship Type", "From Class ID", "From Class Name", "To Class ID", "To Class Name",
