@@ -24,3 +24,13 @@ PIM_GENERATED_RELATIONS_FILE_PATH = "./TransformationResults/Relations/generated
 PIM_DIGITAL_RELATED_CLASS_NAME = "DigitalRepresentation"
 PIM_DIGITAL_MODEL_RELATED_CLASS_NAME = "DigitalModel"
 PIM_MODEL_MANAGER_CLASS_NAME = "DigitalModelManager"
+PIM_TWIN_MANAGER_CLASS_NAME = "DigitalTwinManager"
+
+
+PSM_M2MT_XML_FILE_PATH = "./MDAModelingLevels/03.PSM/M2MT_GENERATED_XML/psm.xml"
+PSM_VP_XML_FILE_PATH = "./MDAModelingLevels/03.PSM/VP_GENERATED_XML/project.xml"
+PSM_PROJECT_NAME = "PlatformSpecificModel"
+PSM_PROJECT_AUTHOR = "PSMAuthor"
+PSM_CLASS_DIAGRAM_NAME = "FiwareandSumoBolognaMobilityDigitalTwin"
+PSM_GENERATED_CLASSES_FILE_PATH = "./TransformationResults/Classes/generated_psmclasses.csv"
+PSM_GENERATED_RELATIONS_FILE_PATH = "./TransformationResults/Relations/generated_psmrelations.csv"
