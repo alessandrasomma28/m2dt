@@ -2,7 +2,9 @@ import pandas as pd
 from TransformationRules.transformationutils import (findGeneralizationChildClasses, generateId,
                                                      findClassesByPartialName, getIdLength, getExistingIds)
 from TransformationRules.constants import (PIM_DIGITAL_MODEL_RELATED_CLASS_NAME, PIM_DIGITAL_RELATED_CLASS_NAME,
-                                           PIM_MODEL_MANAGER_CLASS_NAME, PIM_TWIN_MANAGER_CLASS_NAME)
+                                           PIM_MODEL_MANAGER_CLASS_NAME, PIM_TWIN_MANAGER_CLASS_NAME,
+                                           PIM_DATA_PROVIDER_CLASS_NAME, PIM_REAL_TWIN_CLASS_NAME,
+                                           PIM_DATA_RECEIVER_CLASS_NAME, PIM_ADAPTER_CLASS_NAME)
 
 
 def pim2psmTransformation(pimClasses, pimRelations):
@@ -17,6 +19,7 @@ def pim2psmTransformation(pimClasses, pimRelations):
     psmClasses, psmRelations = createFiwareContext(psmClasses, psmRelations)
 
     # RULE 3. transformAdapter
+    psmClasses, psmRelations = transformAdapter(pimClasses, pimRelations, psmClasses, psmRelations)
 
     # RULE 4. transformService
 
@@ -110,8 +113,6 @@ def transformDigitalModel(pimClasses, pimRelations, psmRelations):
 
     return psmClasses, psmRelations
 
-
-
 ############################### RULE2: createFiwareContext  ##############################
 def createFiwareContext(psmClasses, psmRelations):
     """
@@ -190,4 +191,141 @@ def createFiwareContext(psmClasses, psmRelations):
     ], ignore_index=True)
 
     return psmClasses, psmRelations
+
+############################### RULE3: transformAdapter  ##############################
+def transformAdapter(pimClasses, pimRelations, psmClasses, psmRelations):
+    """
+    Transform Adapter-related PIM classes and relationships into PSM classes and relationships.
+
+    This includes:
+      - Transforming "PhysicalTwin", "DataProvider", and "DataReceiver" classes from PIM to PSM.
+      - Adding relationships between "Agent" and "DataProvider"/"DataReceiver" classes.
+      - Adding a general "Agent" class and establishing relationships with other entities (e.g., "ContextBroker").
+      - Adding relationships between "Agent" and MongoManager.
+
+    Args:
+        pimClasses (pd.DataFrame): DataFrame of PIM classes with columns ['Class ID', 'Class Name'].
+        pimRelations (pd.DataFrame): DataFrame of PIM relationships with columns ['From Class ID', 'From Class Name',
+                                                                                  'To Class ID', 'To Class Name',
+                                                                                  'Relationship Type'].
+        psmClasses (pd.DataFrame): DataFrame of PSM classes with columns ['Class ID', 'Class Name'].
+        psmRelations (pd.DataFrame): DataFrame of PSM relationships with columns ['Relationship Type',
+                                                                                  'From Class ID', 'From Class Name',
+                                                                                  'To Class ID', 'To Class Name',
+                                                                                  'Aggregation'].
+
+    Returns:
+        tuple: Updated PSM classes and relationships DataFrames.
+    """
+
+    # Helper: Add a new class to PSM
+    def add_class_to_psm(class_id, class_name):
+        new_class = {'Class ID': class_id, 'Class Name': class_name}
+        return pd.concat([psmClasses, pd.DataFrame([new_class])], ignore_index=True)
+
+    # Helper: Add a new relationship to PSM
+    def add_relation_to_psm(from_id, from_name, to_id, to_name, rel_type, aggregation=False):
+        new_relation = {
+            'Relationship Type': rel_type,
+            'From Class ID': from_id,
+            'From Class Name': from_name,
+            'To Class ID': to_id,
+            'To Class Name': to_name,
+            'Aggregation': aggregation
+        }
+        return pd.concat([psmRelations, pd.DataFrame([new_relation])], ignore_index=True)
+
+    # 1. Search for the "PhysicalTwin" class in PIM
+    physicalTwin = findClassesByPartialName(pimClasses, PIM_REAL_TWIN_CLASS_NAME)
+    if not physicalTwin.empty:
+        # Transform PhysicalTwin into PSM
+        physicalTwinId = physicalTwin.iloc[0]['Class ID']
+        physicalTwinName = physicalTwin.iloc[0]['Class Name']
+        psmClasses = add_class_to_psm(physicalTwinId, physicalTwinName)
+
+        # 2. Search for "DataProvider" and "DataReceiver" classes in PIM
+        dataProviders = findClassesByPartialName(pimClasses, PIM_DATA_PROVIDER_CLASS_NAME)
+        dataReceivers = findClassesByPartialName(pimClasses, PIM_DATA_RECEIVER_CLASS_NAME)
+
+        # 3. Add DataProvider and DataReceiver classes to PSM
+        for _, provider in dataProviders.iterrows():
+            providerId = provider['Class ID']
+            providerName = provider['Class Name']
+            psmClasses = add_class_to_psm(providerId, providerName)
+
+            # Add relationships between PhysicalTwin and DataProvider
+            providerRelations = pimRelations[
+                ((pimRelations['From Class ID'] == physicalTwinId) & (pimRelations['To Class ID'] == providerId)) |
+                ((pimRelations['From Class ID'] == providerId) & (pimRelations['To Class ID'] == physicalTwinId))
+            ]
+            for _, rel in providerRelations.iterrows():
+                psmRelations = add_relation_to_psm(
+                    rel['From Class ID'], rel['From Class Name'],
+                    rel['To Class ID'], rel['To Class Name'],
+                    rel['Relationship Type'],
+                    aggregation=rel.get('Aggregation', False)
+                )
+
+        for _, receiver in dataReceivers.iterrows():
+            receiverId = receiver['Class ID']
+            receiverName = receiver['Class Name']
+            psmClasses = add_class_to_psm(receiverId, receiverName)
+
+            # Add relationships between PhysicalTwin and DataReceiver
+            receiverRelations = pimRelations[
+                ((pimRelations['From Class ID'] == physicalTwinId) & (pimRelations['To Class ID'] == receiverId)) |
+                ((pimRelations['From Class ID'] == receiverId) & (pimRelations['To Class ID'] == physicalTwinId))
+            ]
+            for _, rel in receiverRelations.iterrows():
+                psmRelations = add_relation_to_psm(
+                    rel['From Class ID'], rel['From Class Name'],
+                    rel['To Class ID'], rel['To Class Name'],
+                    rel['Relationship Type'],
+                    aggregation=rel.get('Aggregation', False)
+                )
+
+    # 4. Find all classes with "Adapter" in the name in PIM
+    adapterClasses = findClassesByPartialName(pimClasses, PIM_ADAPTER_CLASS_NAME)
+
+    # 5. Add a new "Agent" class to PSM
+    existingIds = getExistingIds(psmClasses)
+    idLength = getIdLength(psmClasses)
+    agentId = generateId(existingIds, idLength)
+    psmClasses = add_class_to_psm(agentId, "Agent")
+
+    # 6. Add relationships between Agent and ContextBroker
+    contextBrokerClass = findClassesByPartialName(psmClasses, "Broker")
+    if not contextBrokerClass.empty:
+        brokerId = contextBrokerClass.iloc[0]['Class ID']
+        brokerName = contextBrokerClass.iloc[0]['Class Name']
+        psmRelations = add_relation_to_psm(agentId, "Agent", brokerId, brokerName, "Association", aggregation=False)
+
+    # 7. Add usage relationships between Agent and DataProviders/DataReceivers
+    for _, provider in dataProviders.iterrows():
+        providerId = provider['Class ID']
+        providerName = provider['Class Name']
+        psmRelations = add_relation_to_psm(providerId, providerName, agentId, "Agent", "Usage", aggregation=False)
+
+    for _, receiver in dataReceivers.iterrows():
+        receiverId = receiver['Class ID']
+        receiverName = receiver['Class Name']
+        psmRelations = add_relation_to_psm(agentId, "Agent", receiverId, receiverName, "Usage", aggregation=False)
+
+    # 8. Add relationships between Agent and MongoManager
+    mongoManagerClass = findClassesByPartialName(psmClasses, "MongoManager")
+    if not mongoManagerClass.empty:
+        mongoManagerId = mongoManagerClass.iloc[0]['Class ID']
+        mongoManagerName = mongoManagerClass.iloc[0]['Class Name']
+        psmRelations = add_relation_to_psm(agentId, "Agent", mongoManagerId, mongoManagerName, "Usage", aggregation=False)
+
+    return psmClasses, psmRelations
+
+
+
+
+
+
+############################### RULE4: transformService  ##############################
+
+############################### RULE5: integrateData  ##############################
 

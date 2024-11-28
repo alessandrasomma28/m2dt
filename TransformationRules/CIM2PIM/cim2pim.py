@@ -1,7 +1,9 @@
 from TransformationRules.transformationutils import generateId, getIdLength, getExistingIds, \
-    findGeneralizationChildClasses, findClassId, findRelatedRelationships
+    findGeneralizationChildClasses, findClassId, findRelatedRelationships, findClassesByPartialName
 import pandas as pd
-from TransformationRules.constants import CIM_REAL_TWIN_CLASS_NAME, PHYSICAL_ENTITY_CLASS_NAME, TEMPORAL_ENTITY_CLASS_NAME, SENSOR_ENTITY_CLASS_NAME, ACTUATOR_ENTITY_CLASS_NAME
+from TransformationRules.constants import (CIM_REAL_TWIN_CLASS_NAME, PHYSICAL_ENTITY_CLASS_NAME,
+                                           TEMPORAL_ENTITY_CLASS_NAME, SENSOR_ENTITY_CLASS_NAME,
+                                           ACTUATOR_ENTITY_CLASS_NAME, PIM_REAL_TWIN_CLASS_NAME)
 
 
 def cim2pimTransformation(cimClasses, cimRelations):
@@ -912,20 +914,83 @@ def addUseProviders(providersList: list, adaptersList: list, pimRelations: pd.Da
 
     return pimRelations
 
+def addPhysicalTwinAggregation(pimClasses, dataProviders, pimRelations):
+    """
+    Add aggregation relationships between the PhysicalTwin class and DataProvider classes.
+
+    Args:
+        pimClasses (pd.DataFrame): DataFrame of PIM classes.
+        dataProviders (list): List of DataProvider class dictionaries.
+        pimRelations (pd.DataFrame): DataFrame of PIM relationships.
+
+    Returns:
+        pd.DataFrame: Updated PIM relationships DataFrame.
+    """
+    # Find the PhysicalTwin class in PIM classes
+    physicalTwin = findClassesByPartialName(pimClasses, PIM_REAL_TWIN_CLASS_NAME)
+    if physicalTwin.empty:
+        raise ValueError("PhysicalTwin class not found in PIM classes.")
+
+    # Use the first matched PhysicalTwin class
+    physicalTwinId = physicalTwin.iloc[0]['Class ID']
+    physicalTwinName = physicalTwin.iloc[0]['Class Name']
+
+    # Add an aggregation relationship for each DataProvider
+    for provider in dataProviders:
+        providerId = provider['Class ID']
+        providerName = provider['Class Name']
+
+        newRelation = {
+            'Relationship Type': 'Aggregation',
+            'From Class ID': physicalTwinId,
+            'From Class Name': physicalTwinName,
+            'To Class ID': providerId,
+            'To Class Name': providerName,
+            'Aggregation': 'Shared'
+        }
+        pimRelations = pd.concat([pimRelations, pd.DataFrame([newRelation])], ignore_index=True)
+
+    return pimRelations
 def transformSensor(cimClasses, cimRelations, pimClasses, pimRelations):
+    """
+    Transform Sensor-related CIM classes and relationships into PIM classes and relationships.
+
+    Args:
+        cimClasses (pd.DataFrame): DataFrame of CIM classes.
+        cimRelations (pd.DataFrame): DataFrame of CIM relationships.
+        pimClasses (pd.DataFrame): DataFrame of PIM classes.
+        pimRelations (pd.DataFrame): DataFrame of PIM relationships.
+
+    Returns:
+        tuple: Updated PIM classes and relationships DataFrames.
+    """
     existingIds = getExistingIds(pimClasses)
     idLength = getIdLength(pimClasses)
 
-    dataProviders=createDataProviders(cimClasses, cimRelations, existingIds, idLength)
+    # Step 1: Create DataProvider classes
+    dataProviders = createDataProviders(cimClasses, cimRelations, existingIds, idLength)
     pimClasses = pd.concat([pimClasses, pd.DataFrame(dataProviders)], ignore_index=True)
 
-    adaptersList, pimClasses = addP2DAdapters(dataProviders,existingIds,idLength,pimClasses)
+    # Step 2: Add PhysicalTwin-to-DataProvider aggregation relationships
+    pimRelations = addPhysicalTwinAggregation(pimClasses, dataProviders, pimRelations)
+
+    # Step 3: Add P2D Adapters
+    adaptersList, pimClasses = addP2DAdapters(dataProviders, existingIds, idLength, pimClasses)
+
+    # Step 4: Add the "Adapter" class
     adapterID = addAdapter(existingIds, idLength)
     pimClasses = pd.concat([pimClasses, pd.DataFrame([{'Class ID': adapterID, 'Class Name': 'Adapter'}])], ignore_index=True)
+
+    # Step 5: Add Generalization relationships for Adapters
     pimRelations = addGeneralizationAdapters(adaptersList, adapterID, pimRelations)
-    pimRelations = addUseProviders(dataProviders,adaptersList, pimRelations)
+
+    # Step 6: Add "Use" relationships for Data Providers
+    pimRelations = addUseProviders(dataProviders, adaptersList, pimRelations)
+
+    # Remove duplicates
     pimClasses = pimClasses.drop_duplicates(subset='Class Name', keep='first', ignore_index=True)
-    pimRelations = pimRelations.drop_duplicates(subset=['From Class Name', 'To Class Name', 'Relationship Type'], keep='first', ignore_index=True)
+    pimRelations = pimRelations.drop_duplicates(subset=['From Class Name', 'To Class Name', 'Relationship Type'],
+                                                keep='first', ignore_index=True)
 
     return pimClasses, pimRelations
 
@@ -1105,10 +1170,13 @@ def transformActuator(cimClasses: pd.DataFrame, cimRelations: pd.DataFrame, pimC
     dataReceivers = createDataReceivers(cimClasses, cimRelations, existingIds, idLength)
     pimClasses = pd.concat([pimClasses, pd.DataFrame(dataReceivers)], ignore_index=True)
 
-    # Step 2: Add D2PAdapter classes for each data receiver
+    # Step 2: Add PhysicalTwin-to-DataReceivers aggregation relationships
+    pimRelations = addPhysicalTwinAggregation(pimClasses, dataReceivers, pimRelations)
+
+    # Step 3: Add D2PAdapter classes for each data receiver
     adaptersList, pimClasses = addD2PAdapters(dataReceivers, existingIds, idLength, pimClasses)
 
-    # Step 3: Check if 'Adapter' superclass already exists; if not, create it
+    # Step 4: Check if 'Adapter' superclass already exists; if not, create it
     if not pimClasses[pimClasses['Class Name'] == 'Adapter'].empty:
         adapterId = pimClasses[pimClasses['Class Name'] == 'Adapter']['Class ID'].values[0]
     else:
@@ -1116,13 +1184,13 @@ def transformActuator(cimClasses: pd.DataFrame, cimRelations: pd.DataFrame, pimC
         adapterId = addAdapter(existingIds, idLength)
         pimClasses = pd.concat([pimClasses, pd.DataFrame([{'Class ID': adapterId, 'Class Name': 'Adapter'}])],ignore_index=True)
 
-    # Step 4: Add generalization relationships between adapters and 'Adapter'
+    # Step 5: Add generalization relationships between adapters and 'Adapter'
     pimRelations = addGeneralizationAdapters(adaptersList, adapterId, pimRelations)
 
-    # Step 5: Add usage relationships between data receivers and adapters
+    # Step 6: Add usage relationships between data receivers and adapters
     pimRelations = addUseReceivers(dataReceivers, adaptersList, pimRelations)
 
-    # Step 6: Remove duplicates from PIM classes and relationships
+    # Step 7: Remove duplicates from PIM classes and relationships
     pimClasses = pimClasses.drop_duplicates(subset='Class Name', keep='first', ignore_index=True)
     pimRelations = pimRelations.drop_duplicates(subset=['From Class Name', 'To Class Name', 'Relationship Type'], keep='first', ignore_index=True)
 
