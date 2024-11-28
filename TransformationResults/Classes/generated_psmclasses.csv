@@ -1,0 +1,11 @@
+Class ID,Class Name
+JRjkmKTOmLZxKIrc,SumoSimulator
+OBsGIykibenKk3zQ,DigitalTwinManager
+KaSfMueo6fPy8otn,ContextBroker
+mNrOEyeDJiJwT7Xn,SubscriptionManager
+ywwHT5SwymcxfoNZ,MongoManager
+a2jYoovdHvHESUPU,TimescaleManager
+uaRVvLoIiw4ESTeJ,BolognaPhysicalTwin
+9vR1rzUVml20AnFc,TrafficLoopDataProvider
+4jTMyNegJb7NiRcP,TrafficLightDataReceiver
+cKC8c9iMVNAN02CK,Agent

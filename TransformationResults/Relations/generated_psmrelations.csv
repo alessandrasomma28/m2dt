@@ -1,0 +1,10 @@
+Relationship Type,From Class ID,From Class Name,To Class ID,To Class Name,Aggregation
+Aggregation,JRjkmKTOmLZxKIrc,SumoSimulator,OBsGIykibenKk3zQ,DigitalTwinManager,Shared
+Association,KaSfMueo6fPy8otn,ContextBroker,mNrOEyeDJiJwT7Xn,SubscriptionManager,False
+Usage,KaSfMueo6fPy8otn,ContextBroker,ywwHT5SwymcxfoNZ,MongoManager,False
+Aggregation,uaRVvLoIiw4ESTeJ,BolognaPhysicalTwin,9vR1rzUVml20AnFc,TrafficLoopDataProvider,Shared
+Aggregation,uaRVvLoIiw4ESTeJ,BolognaPhysicalTwin,4jTMyNegJb7NiRcP,TrafficLightDataReceiver,Shared
+Association,cKC8c9iMVNAN02CK,Agent,KaSfMueo6fPy8otn,ContextBroker,False
+Usage,9vR1rzUVml20AnFc,TrafficLoopDataProvider,cKC8c9iMVNAN02CK,Agent,False
+Usage,cKC8c9iMVNAN02CK,Agent,4jTMyNegJb7NiRcP,TrafficLightDataReceiver,False
+Usage,cKC8c9iMVNAN02CK,Agent,ywwHT5SwymcxfoNZ,MongoManager,False
