@@ -22,8 +22,10 @@ def pim2psmTransformation(pimClasses, pimRelations):
     psmClasses, psmRelations = transformAdapter(pimClasses, pimRelations, psmClasses, psmRelations)
 
     # RULE 4. transformService
+    psmClasses, psmRelations = transformService(pimClasses, pimRelations, psmClasses, psmRelations)
 
     # RULE 5. integrateData
+    psmClasses, psmRelations = integrateData(pimClasses, pimRelations, psmClasses, psmRelations)
 
     return psmClasses, psmRelations
 
@@ -320,12 +322,216 @@ def transformAdapter(pimClasses, pimRelations, psmClasses, psmRelations):
 
     return psmClasses, psmRelations
 
-
-
-
-
-
 ############################### RULE4: transformService  ##############################
+def transformService(pimClasses, pimRelations, psmClasses, psmRelations):
+    """
+    Transform Service-related PIM classes and relationships into PSM classes and relationships.
+
+    Args:
+        pimClasses (pd.DataFrame): DataFrame of PIM classes
+        pimRelations (pd.DataFrame): DataFrame of PIM relationships
+        psmClasses (pd.DataFrame): DataFrame of PSM classe
+        psmRelations (pd.DataFrame): DataFrame of PSM relationships
+
+    Returns:
+        tuple: Updated PSM classes and relationships DataFrames.
+    """
+    # Helper to add a new class to PSM
+    def add_class_to_psm(class_id, class_name):
+        new_class = {'Class ID': class_id, 'Class Name': class_name}
+        return pd.concat([psmClasses, pd.DataFrame([new_class])], ignore_index=True)
+
+    # Helper to add a new relationship to PSM
+    def add_relation_to_psm(from_id, from_name, to_id, to_name, rel_type, aggregation=False):
+        new_relation = {
+            'Relationship Type': rel_type,
+            'From Class ID': from_id,
+            'From Class Name': from_name,
+            'To Class ID': to_id,
+            'To Class Name': to_name,
+            'Aggregation': aggregation
+        }
+        return pd.concat([psmRelations, pd.DataFrame([new_relation])], ignore_index=True)
+
+    # 1. Find DigitalTwinManager in PIM classes and its relationships
+    digitalTwinManager = findClassesByPartialName(pimClasses, PIM_TWIN_MANAGER_CLASS_NAME)
+    if digitalTwinManager.empty:
+        return psmClasses, psmRelations  # If no DigitalTwinManager exists, skip this rule
+
+    digitalTwinManagerId = digitalTwinManager.iloc[0]['Class ID']
+    digitalTwinManagerName = digitalTwinManager.iloc[0]['Class Name']
+
+    # 2. Add new classes: ScenarioGenerator, Planner, and DigitalTwinHMI
+    existingIds = getExistingIds(psmClasses)
+    idLength = getIdLength(psmClasses)
+
+    scenarioGeneratorId = generateId(existingIds, idLength)
+    plannerId = generateId(existingIds, idLength)
+    digitalTwinHMIId = generateId(existingIds, idLength)
+
+    psmClasses = add_class_to_psm(scenarioGeneratorId, 'ScenarioGenerator')
+    psmClasses = add_class_to_psm(plannerId, 'Planner')
+    psmClasses = add_class_to_psm(digitalTwinHMIId, 'DigitalTwinHMI')
+
+    # 3. Find Feedback-related classes in PIM
+    feedbackClasses = findClassesByPartialName(pimClasses, 'Feedback')
+
+    # 4. Add Feedback-related classes to PSM
+    for _, feedbackRow in feedbackClasses.iterrows():
+        feedbackClassId = generateId(existingIds, idLength)  # Generate new ID for feedback class
+        feedbackClassName = f"{feedbackRow['Class Name']}"  # Rename feedback class for PSM
+        psmClasses = add_class_to_psm(feedbackClassId, feedbackClassName)
+
+        # 9. Add containment relationship between DigitalTwinManager and Feedback-related classes
+        psmRelations = add_relation_to_psm(
+            digitalTwinManagerId, digitalTwinManagerName,
+            feedbackClassId, feedbackClassName,
+            "Containment", aggregation=False
+        )
+
+    # 5. Add usage relationship between DigitalTwinManager and DigitalTwinHMI
+    psmRelations = add_relation_to_psm(digitalTwinHMIId, 'DigitalTwinHMI',
+        digitalTwinManagerId, digitalTwinManagerName,
+        "Usage", aggregation=False
+    )
+
+    # 6. Add usage relationship between DigitalTwinManager and Planner
+    psmRelations = add_relation_to_psm(
+        digitalTwinManagerId, digitalTwinManagerName,
+        plannerId, 'Planner',
+        "Usage", aggregation=False
+    )
+
+    # 7. Add aggregation relationship between Planner and ScenarioGenerator
+    psmRelations = add_relation_to_psm(
+        plannerId, 'Planner',
+        scenarioGeneratorId, 'ScenarioGenerator',
+        "Aggregation", aggregation="Shared"
+    )
+
+    # 8. Add usage relationship between ScenarioGenerator and SumoSimulator
+    sumoSimulator = findClassesByPartialName(psmClasses, 'SumoSimulator')
+    if not sumoSimulator.empty:
+        sumoSimulatorId = sumoSimulator.iloc[0]['Class ID']
+        sumoSimulatorName = sumoSimulator.iloc[0]['Class Name']
+        psmRelations = add_relation_to_psm(
+            scenarioGeneratorId, 'ScenarioGenerator',
+            sumoSimulatorId, sumoSimulatorName,
+            "Usage", aggregation=False
+        )
+
+    return psmClasses, psmRelations
+
 
 ############################### RULE5: integrateData  ##############################
+def integrateData(pimClasses, pimRelations, psmClasses, psmRelations):
+    """
+    Transform and integrate data-related classes from PIM to PSM by creating and relating data management classes.
 
+    Args:
+        pimClasses (pd.DataFrame): DataFrame of PIM classes
+        pimRelations (pd.DataFrame): DataFrame of PIM relationships
+        psmClasses (pd.DataFrame): DataFrame of PSM classes
+        psmRelations (pd.DataFrame): DataFrame of PSM relationships
+
+    Returns:
+        tuple: Updated PSM classes and relationships DataFrames.
+    """
+    # Helper to add a new class to PSM
+    def add_class_to_psm(class_id, class_name):
+        new_class = {'Class ID': class_id, 'Class Name': class_name}
+        return pd.concat([psmClasses, pd.DataFrame([new_class])], ignore_index=True)
+
+    # Helper to add a new relationship to PSM
+    def add_relation_to_psm(from_id, from_name, to_id, to_name, rel_type, aggregation=False):
+        new_relation = {
+            'Relationship Type': rel_type,
+            'From Class ID': from_id,
+            'From Class Name': from_name,
+            'To Class ID': to_id,
+            'To Class Name': to_name,
+            'Aggregation': aggregation
+        }
+        return pd.concat([psmRelations, pd.DataFrame([new_relation])], ignore_index=True)
+
+    # 1. Search the DataManager class in PIM
+    dataManagerPIM = findClassesByPartialName(pimClasses, 'DataManager')
+
+    # 2. Create the new DataManager class in PSM
+    existingIds = getExistingIds(psmClasses)
+    idLength = getIdLength(psmClasses)
+
+    dataManagerId = generateId(existingIds, idLength)
+    psmClasses = add_class_to_psm(dataManagerId, 'DataManager')
+
+    # 3. Create the DataModelManager and DatabaseManager classes
+    dataModelManagerId = generateId(existingIds, idLength)
+    databaseManagerId = generateId(existingIds, idLength)
+
+    psmClasses = add_class_to_psm(dataModelManagerId, 'DataModelManager')
+    psmClasses = add_class_to_psm(databaseManagerId, 'DatabaseManager')
+
+    # 4. Add generalization relations between DatabaseManager (parent) and MongoManager and TimescaleManager (children)
+    mongoManager = findClassesByPartialName(psmClasses, 'MongoManager')
+    timescaleManager = findClassesByPartialName(psmClasses, 'TimescaleManager')
+
+    if not mongoManager.empty and not timescaleManager.empty:
+        mongoManagerId = mongoManager.iloc[0]['Class ID']
+        mongoManagerName = mongoManager.iloc[0]['Class Name']
+
+        timescaleManagerId = timescaleManager.iloc[0]['Class ID']
+        timescaleManagerName = timescaleManager.iloc[0]['Class Name']
+
+        # Add generalization relationships
+        psmRelations = add_relation_to_psm(
+            databaseManagerId, 'DatabaseManager',
+            mongoManagerId, mongoManagerName,
+            "Generalization"
+        )
+        psmRelations = add_relation_to_psm(
+            databaseManagerId, 'DatabaseManager',
+            timescaleManagerId, timescaleManagerName,
+            "Generalization"
+        )
+
+    # Add the usage relation between DataModelManager and ContextBroker class
+    contextBroker = findClassesByPartialName(psmClasses, 'ContextBroker')
+    if not contextBroker.empty:
+        contextBrokerId = contextBroker.iloc[0]['Class ID']
+        contextBrokerName = contextBroker.iloc[0]['Class Name']
+
+        psmRelations = add_relation_to_psm(
+            contextBrokerId, contextBrokerName,
+            dataModelManagerId, 'DataModelManager',
+            "Usage"
+        )
+
+    # Add aggregation shared relations between DataManager and DataModelManager, and DatabaseManager
+    psmRelations = add_relation_to_psm(
+        dataManagerId, 'DataManager',
+        dataModelManagerId, 'DataModelManager',
+        "Aggregation", aggregation="Shared"
+    )
+    psmRelations = add_relation_to_psm(
+        dataManagerId, 'DataManager',
+        databaseManagerId, 'DatabaseManager',
+        "Aggregation", aggregation="Shared"
+    )
+
+    # Add the usage relation between the DigitalTwinManager and DataManager
+    digitalTwinManager = findClassesByPartialName(psmClasses, PIM_TWIN_MANAGER_CLASS_NAME)
+    if not digitalTwinManager.empty:
+        digitalTwinManagerId = digitalTwinManager.iloc[0]['Class ID']
+        digitalTwinManagerName = digitalTwinManager.iloc[0]['Class Name']
+
+        psmRelations = add_relation_to_psm(
+            digitalTwinManagerId, digitalTwinManagerName,
+            dataManagerId, 'DataManager',
+            "Usage"
+        )
+
+    return psmClasses, psmRelations
+
+
+def updateShadowRelation(pimClasses, pimRelations, psmClasses, psmRelations):
+    return psmClasses, psmRelations
