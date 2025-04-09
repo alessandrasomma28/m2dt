@@ -8,12 +8,12 @@ Architecture* (MDA) approach for developing *Mobility Digital Twins* (MoDT). It 
 transformations**, specifically transforming models from the *Computational Independent Model* (CIM) to the 
 *Platform Independent Model* (PIM), and from the *PIM* to the *Platform Specific Model* (PSM).
 
-The MoDT-M2M-TT process, illustrated in Figure 1, comprises four distinct steps represented by rounded boxes. Each 
+The M2DT process, illustrated in Figure 1, comprises four distinct steps represented by rounded boxes. Each 
 step produces an output, indicated by notes in the diagram, serving as input for the subsequent step.
 
 <div align="center">
   <img src="Images/m2mprocesstool.png" alt="M2M Tool Image" width="700"/>
-  <p><b>Figure 1:</b> MoDT-M2M-TT Transformation Process. </p>
+  <p><b>Figure 1:</b> M2DT. </p>
 </div>
 
 The process begins with step *M2M.1*, where the source model is converted into the eXtensible Markup Language (XML) format 
