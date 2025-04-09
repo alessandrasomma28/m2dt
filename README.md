@@ -3,7 +3,7 @@
 ![License](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/alessandrasomma28/MoDT-M2M-TT/refs/heads/main/Images/Badges/licenseb.json&label=License&query=$.license.version&color=orange&cacheSeconds=60&logo=GNU)
 ![Repo Size](https://img.shields.io/github/repo-size/alessandrasomma28/MoDT-M2M-TT?logo=github)
 
-** M2DT** is the *Model-driven Mobility Digital Twin Tool* used in the *Model-Driven 
+**M2DT** is the *Model-driven Mobility Digital Twin Tool* used in the *Model-Driven 
 Architecture* (MDA) approach for developing *Mobility Digital Twins* (MoDT). It automates **Model-to-Model (M2M) 
 transformations**, specifically transforming models from the *Computational Independent Model* (CIM) to the 
 *Platform Independent Model* (PIM), and from the *PIM* to the *Platform Specific Model* (PSM).
